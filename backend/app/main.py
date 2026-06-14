@@ -40,3 +40,8 @@ app.include_router(analytics_router)
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"status": "ok"}
