@@ -5,6 +5,7 @@ from app.database.session import SessionLocal, init_db
 from app.models import Customer
 from app.database.crud import campaign as campaign_crud
 from app.database.crud import campaign_recipient as recipient_crud
+from app.database.crud import communication_log as log_crud
 
 FIRST_NAMES = [
     "Aarav", "Vihaan", "Ananya", "Isha", "Rohan", "Priya", "Kabir", "Meera",
@@ -92,6 +93,17 @@ def seed_database(customer_count: int = 100) -> None:
                     campaign = campaign_crud.create_campaign(db=db, name=name, message_template=template)
                     recipients = random.sample(customer_ids, k=min(10, len(customer_ids)))
                     recipient_crud.add_campaign_recipients(db, campaign.id, recipients)
+                    # create communication logs for recipients
+                    for cid in recipients:
+                        # always add a 'sent' event
+                        log_crud.create_communication_log(db, campaign.id, cid, status="sent")
+                        # randomly add opened/clicked/failed events
+                        if random.random() < 0.6:
+                            log_crud.create_communication_log(db, campaign.id, cid, status="opened")
+                            if random.random() < 0.3:
+                                log_crud.create_communication_log(db, campaign.id, cid, status="clicked")
+                        elif random.random() < 0.1:
+                            log_crud.create_communication_log(db, campaign.id, cid, status="failed")
                 print("Seeded sample campaigns and recipients.")
             else:
                 print("No customers available to assign as campaign recipients.")
