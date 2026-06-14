@@ -3,6 +3,8 @@ from datetime import datetime, timedelta, timezone
 
 from app.database.session import SessionLocal, init_db
 from app.models import Customer
+from app.database.crud import campaign as campaign_crud
+from app.database.crud import campaign_recipient as recipient_crud
 
 FIRST_NAMES = [
     "Aarav", "Vihaan", "Ananya", "Isha", "Rohan", "Priya", "Kabir", "Meera",
@@ -73,6 +75,26 @@ def seed_database(customer_count: int = 100) -> None:
         db.add_all(customers)
         db.commit()
         print(f"Seeded {customer_count} customers successfully.")
+        # Create a few sample campaigns and assign recipients
+        try:
+            customer_ids = [c.id for c in db.query(Customer.id).all()]
+            if customer_ids:
+                sample_campaigns = [
+                    ("Welcome Series", "Hi {{name}}, welcome to our store!"),
+                    ("Re-engage", "Hi {{name}}, we've missed you—here's 10% off."),
+                    ("Top Spenders", "Hi {{name}}, thanks for being a top customer!"),
+                ]
+                for name, template in sample_campaigns:
+                    campaign = campaign_crud.create_campaign(db=db, name=name, message_template=template)
+                    # pick a random subset of customers for recipients
+                    import random
+
+                    recipients = random.sample(customer_ids, k=min(10, len(customer_ids)))
+                    recipient_crud.add_campaign_recipients(db, campaign.id, recipients)
+                print("Seeded sample campaigns and recipients.")
+        except Exception:
+            # don't fail the entire seeding if campaign seeding has issues
+            print("Campaign seeding skipped due to an error.")
     finally:
         db.close()
 
