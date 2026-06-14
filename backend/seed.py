@@ -67,15 +67,17 @@ def seed_database(customer_count: int = 100) -> None:
 
     try:
         existing_count = db.query(Customer).count()
-        if existing_count > 0:
-            print(f"Database already contains {existing_count} customers. Skipping seed.")
-            return
+        seed_customers = existing_count == 0
 
-        customers = generate_customers(customer_count)
-        db.add_all(customers)
-        db.commit()
-        print(f"Seeded {customer_count} customers successfully.")
-        # Create a few sample campaigns and assign recipients
+        if not seed_customers:
+            print(f"Database already contains {existing_count} customers. Skipping customer seed.")
+        else:
+            customers = generate_customers(customer_count)
+            db.add_all(customers)
+            db.commit()
+            print(f"Seeded {customer_count} customers successfully.")
+
+        # Create a few sample campaigns and assign recipients (always attempt)
         try:
             customer_ids = [c.id for c in db.query(Customer.id).all()]
             if customer_ids:
@@ -84,16 +86,16 @@ def seed_database(customer_count: int = 100) -> None:
                     ("Re-engage", "Hi {{name}}, we've missed you—here's 10% off."),
                     ("Top Spenders", "Hi {{name}}, thanks for being a top customer!"),
                 ]
+                import random
+
                 for name, template in sample_campaigns:
                     campaign = campaign_crud.create_campaign(db=db, name=name, message_template=template)
-                    # pick a random subset of customers for recipients
-                    import random
-
                     recipients = random.sample(customer_ids, k=min(10, len(customer_ids)))
                     recipient_crud.add_campaign_recipients(db, campaign.id, recipients)
                 print("Seeded sample campaigns and recipients.")
+            else:
+                print("No customers available to assign as campaign recipients.")
         except Exception:
-            # don't fail the entire seeding if campaign seeding has issues
             print("Campaign seeding skipped due to an error.")
     finally:
         db.close()
